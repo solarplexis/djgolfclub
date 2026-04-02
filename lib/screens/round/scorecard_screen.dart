@@ -330,9 +330,9 @@ class _HoleDots extends StatelessWidget {
           return GestureDetector(
             onTap: () => onTap(hole),
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: isActive ? 24 : 18,
-              height: isActive ? 24 : 18,
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              width: isActive ? 20 : 14,
+              height: isActive ? 20 : 14,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isActive
@@ -350,7 +350,7 @@ class _HoleDots extends StatelessWidget {
                         '$hole',
                         style: const TextStyle(
                           color: AppColors.green,
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w800,
                         ),
                       ),

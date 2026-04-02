@@ -186,24 +186,33 @@ class _HoleBreakdownTable extends StatelessWidget {
     if (holes.length == 18) {
       final front = holes.sublist(0, 9);
       final back = holes.sublist(9, 18);
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _halfLabel('FRONT 9', theme),
-          const SizedBox(height: 6),
-          _buildTable(front, strokesByHole, theme),
-          const SizedBox(height: 12),
-          _halfLabel('BACK 9', theme),
-          const SizedBox(height: 6),
-          _buildTable(back, strokesByHole, theme),
-        ],
-      );
+      return LayoutBuilder(builder: (context, constraints) {
+        // Fixed label column + equal-width data columns that fill available width
+        const labelWidth = 40.0;
+        final cellWidth = (constraints.maxWidth - labelWidth) / 9;
+        final colWidths = <int, TableColumnWidth>{
+          0: const FixedColumnWidth(labelWidth),
+          for (var i = 1; i <= 9; i++) i: FixedColumnWidth(cellWidth),
+        };
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _halfLabel('FRONT 9', theme),
+            const SizedBox(height: 6),
+            _buildTable(front, strokesByHole, theme, colWidths),
+            const SizedBox(height: 12),
+            _halfLabel('BACK 9', theme),
+            const SizedBox(height: 6),
+            _buildTable(back, strokesByHole, theme, colWidths),
+          ],
+        );
+      });
     }
 
     // Non-18-hole course — keep horizontal scroll
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: _buildTable(holes, strokesByHole, theme),
+      child: _buildTable(holes, strokesByHole, theme, null),
     );
   }
 
@@ -217,9 +226,11 @@ class _HoleBreakdownTable extends StatelessWidget {
     List<dynamic> holeList,
     Map<int, List<int>> strokesByHole,
     ThemeData theme,
+    Map<int, TableColumnWidth>? columnWidths,
   ) {
     return Table(
       defaultColumnWidth: const IntrinsicColumnWidth(),
+      columnWidths: columnWidths,
       border: TableBorder.all(color: AppColors.divider, width: 1),
       children: [
         // Header row — hole numbers

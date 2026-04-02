@@ -33,81 +33,112 @@ class _RoundCard extends StatelessWidget {
     final theme = Theme.of(context);
     final dateStr = _formatDate(round.date);
 
-    return Card(
-      child: ExpansionTile(
-        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Text(
-          round.course.name.toUpperCase(),
-          style: theme.textTheme.titleLarge,
+    return Dismissible(
+      key: ValueKey(round.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.red.shade700,
+          borderRadius: BorderRadius.circular(12),
         ),
-        subtitle: Text(
-          dateStr,
-          style:
-              theme.textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ...round.players.take(3).map((p) {
-              final total = round.totalFor(p);
-              final par = round.course.totalPar;
-              final diff = total != null ? total - par : null;
-              final winnerTotal = round.players
-                  .map((pl) => round.totalFor(pl))
-                  .whereType<int>()
-                  .fold<int?>(
-                      null, (best, t) => best == null || t < best ? t : best);
-              final isWinner = total != null && total == winnerTotal;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      isWinner
-                          ? p.name.split(' ').first.toUpperCase()
-                          : p.name.split(' ').first,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: isWinner
-                            ? const Color(0xFF4CAF50)
-                            : AppColors.textMuted,
-                        fontSize: 11,
-                        fontWeight:
-                            isWinner ? FontWeight.w800 : FontWeight.normal,
-                      ),
-                    ),
-                    Text(
-                      total?.toString() ?? '-',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        color: AppColors.green,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (diff != null)
-                      Text(
-                        diff == 0 ? 'E' : (diff > 0 ? '+$diff' : '$diff'),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: diff < 0
-                              ? AppColors.birdie
-                              : diff == 0
-                                  ? AppColors.par
-                                  : AppColors.bogey,
-                        ),
-                      ),
-                  ],
-                ),
-              );
-            }),
-            IconButton(
-              icon:
-                  const Icon(Icons.delete_outline, color: AppColors.textMuted),
-              onPressed: () => _confirmDelete(context),
+        child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+      ),
+      confirmDismiss: (_) => showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Delete Round?'),
+          content: const Text('This round will be removed from history.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
             ),
           ],
         ),
-        children: [_ScorecardTable(round: round)],
+      ).then((v) => v ?? false),
+      onDismissed: (_) => context.read<RoundProvider>().deleteRound(round.id!),
+      child: GestureDetector(
+        onLongPress: () => _confirmDelete(context),
+        child: Card(
+          child: ExpansionTile(
+            tilePadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            title: Text(
+              round.course.name.toUpperCase(),
+              style: theme.textTheme.titleLarge,
+            ),
+            subtitle: Text(
+              dateStr,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: AppColors.textMuted),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ...round.players.map((p) {
+                  final total = round.totalFor(p);
+                  final par = round.course.totalPar;
+                  final diff = total != null ? total - par : null;
+                  final winnerTotal = round.players
+                      .map((pl) => round.totalFor(pl))
+                      .whereType<int>()
+                      .fold<int?>(null,
+                          (best, t) => best == null || t < best ? t : best);
+                  final isWinner = total != null && total == winnerTotal;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          isWinner
+                              ? p.name.split(' ').first.toUpperCase()
+                              : p.name.split(' ').first,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: isWinner
+                                ? const Color(0xFF4CAF50)
+                                : AppColors.textMuted,
+                            fontSize: 11,
+                            fontWeight:
+                                isWinner ? FontWeight.w800 : FontWeight.normal,
+                          ),
+                        ),
+                        Text(
+                          total?.toString() ?? '-',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            color: AppColors.green,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (diff != null)
+                          Text(
+                            diff == 0 ? 'E' : (diff > 0 ? '+$diff' : '$diff'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: diff < 0
+                                  ? AppColors.birdie
+                                  : diff == 0
+                                      ? AppColors.par
+                                      : AppColors.bogey,
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+            children: [_ScorecardTable(round: round)],
+          ),
+        ),
       ),
     );
   }
