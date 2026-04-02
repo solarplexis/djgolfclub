@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/player_provider.dart';
 import '../../theme/app_theme.dart';
+import 'player_history_screen.dart';
 
 class PlayersScreen extends StatefulWidget {
   const PlayersScreen({super.key});
@@ -111,6 +112,12 @@ class _PlayersScreenState extends State<PlayersScreen> {
                           ),
                         ),
                         title: Text(p.name, style: theme.textTheme.bodyLarge),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PlayerHistoryScreen(player: p),
+                          ),
+                        ),
                         trailing: IconButton(
                           icon: const Icon(Icons.delete_outline,
                               color: AppColors.textMuted),

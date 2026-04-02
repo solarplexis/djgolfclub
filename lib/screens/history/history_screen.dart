@@ -55,7 +55,8 @@ class _RoundCard extends StatelessWidget {
               final winnerTotal = round.players
                   .map((pl) => round.totalFor(pl))
                   .whereType<int>()
-                  .fold<int?>(null, (best, t) => best == null || t < best ? t : best);
+                  .fold<int?>(
+                      null, (best, t) => best == null || t < best ? t : best);
               final isWinner = total != null && total == winnerTotal;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -67,9 +68,12 @@ class _RoundCard extends StatelessWidget {
                           ? p.name.split(' ').first.toUpperCase()
                           : p.name.split(' ').first,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: isWinner ? const Color(0xFF4CAF50) : AppColors.textMuted,
+                        color: isWinner
+                            ? const Color(0xFF4CAF50)
+                            : AppColors.textMuted,
                         fontSize: 11,
-                        fontWeight: isWinner ? FontWeight.w800 : FontWeight.normal,
+                        fontWeight:
+                            isWinner ? FontWeight.w800 : FontWeight.normal,
                       ),
                     ),
                     Text(
