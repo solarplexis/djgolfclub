@@ -14,6 +14,20 @@
       "type": "dart",
       "deviceId": "19111FDF600CSF",
       "flutterMode": "release"
+    },
+    {
+      "name": "T510WS (Debug)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "9HAE75QK8HKRMBFY",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "T510WS (Release)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "9HAE75QK8HKRMBFY",
+      "flutterMode": "release"
     }
   ]
 }
