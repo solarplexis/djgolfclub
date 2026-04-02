@@ -52,15 +52,25 @@ class _RoundCard extends StatelessWidget {
               final total = round.totalFor(p);
               final par = round.course.totalPar;
               final diff = total != null ? total - par : null;
+              final winnerTotal = round.players
+                  .map((pl) => round.totalFor(pl))
+                  .whereType<int>()
+                  .fold<int?>(null, (best, t) => best == null || t < best ? t : best);
+              final isWinner = total != null && total == winnerTotal;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      p.name.split(' ').first,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: AppColors.textMuted, fontSize: 11),
+                      isWinner
+                          ? p.name.split(' ').first.toUpperCase()
+                          : p.name.split(' ').first,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: isWinner ? const Color(0xFF4CAF50) : AppColors.textMuted,
+                        fontSize: 11,
+                        fontWeight: isWinner ? FontWeight.w800 : FontWeight.normal,
+                      ),
                     ),
                     Text(
                       total?.toString() ?? '-',
