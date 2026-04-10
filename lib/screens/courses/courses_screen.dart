@@ -6,7 +6,8 @@ import '../../theme/app_theme.dart';
 import 'create_course_screen.dart';
 
 class CoursesScreen extends StatelessWidget {
-  const CoursesScreen({super.key});
+  final void Function(Course)? onStartRound;
+  const CoursesScreen({super.key, this.onStartRound});
 
   @override
   Widget build(BuildContext context) {
@@ -23,8 +24,10 @@ class CoursesScreen extends StatelessWidget {
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   itemCount: provider.courses.length,
-                  itemBuilder: (ctx, i) =>
-                      _CourseCard(course: provider.courses[i]),
+                  itemBuilder: (ctx, i) => _CourseCard(
+                    course: provider.courses[i],
+                    onStartRound: onStartRound,
+                  ),
                 ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openCreate(context),
@@ -43,7 +46,8 @@ class CoursesScreen extends StatelessWidget {
 
 class _CourseCard extends StatelessWidget {
   final Course course;
-  const _CourseCard({required this.course});
+  final void Function(Course)? onStartRound;
+  const _CourseCard({required this.course, this.onStartRound});
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +56,7 @@ class _CourseCard extends StatelessWidget {
       child: ListTile(
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        onTap: onStartRound != null ? () => onStartRound!(course) : null,
         title: Text(
           course.name.toUpperCase(),
           style: theme.textTheme.titleLarge,

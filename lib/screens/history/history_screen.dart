@@ -11,40 +11,88 @@ class HistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final rounds = context.watch<RoundProvider>().history;
 
+    if (rounds.isEmpty)
+      return Scaffold(
+          appBar: AppBar(title: const Text('HISTORY')), body: _EmptyState());
+
+    // Group by course id, sort rounds within each group latest-first,
+    // then sort groups by their most recent round date.
+    final Map<int, List<Round>> grouped = {};
+    for (final r in rounds) {
+      grouped.putIfAbsent(r.course.id!, () => []).add(r);
+    }
+    for (final list in grouped.values) {
+      list.sort((a, b) => b.date.compareTo(a.date));
+    }
+    final courseGroups = grouped.values.toList()
+      ..sort((a, b) => b.first.date.compareTo(a.first.date));
+
     return Scaffold(
       appBar: AppBar(title: const Text('HISTORY')),
-      body: rounds.isEmpty
-          ? _EmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              itemCount: rounds.length,
-              itemBuilder: (ctx, i) => _RoundCard(round: rounds[i]),
-            ),
+      body: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        itemCount: courseGroups.length,
+        itemBuilder: (ctx, i) => _CourseGroup(rounds: courseGroups[i]),
+      ),
     );
   }
 }
 
-class _RoundCard extends StatelessWidget {
-  final Round round;
-  const _RoundCard({required this.round});
+// ---------------------------------------------------------------------------
+// Top-level accordion: one card per course
+// ---------------------------------------------------------------------------
+class _CourseGroup extends StatelessWidget {
+  final List<Round> rounds; // sorted latest-first
+  const _CourseGroup({required this.rounds});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateStr = _formatDate(round.date);
+    final latest = rounds.first;
 
+    return Card(
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        title: Text(
+          latest.course.name.toUpperCase(),
+          style: theme.textTheme.titleLarge,
+        ),
+        subtitle: Text(
+          '${rounds.length} round${rounds.length == 1 ? '' : 's'} · Last played ${_formatDate(latest.date)}',
+          style:
+              theme.textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
+        ),
+        trailing: _ScoreSummary(round: latest),
+        children: [
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          ...rounds.map((r) => _RoundTile(round: r)),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Individual round row inside an expanded course group
+// ---------------------------------------------------------------------------
+class _RoundTile extends StatelessWidget {
+  final Round round;
+  const _RoundTile({required this.round});
+
+  @override
+  Widget build(BuildContext context) {
     return Dismissible(
       key: ValueKey(round.id),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
           color: Colors.red.shade700,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: const Icon(Icons.delete_outline, color: Colors.white, size: 28),
+        child: const Icon(Icons.delete_outline, color: Colors.white, size: 26),
       ),
       confirmDismiss: (_) => showDialog<bool>(
         context: context,
@@ -53,9 +101,8 @@ class _RoundCard extends StatelessWidget {
           content: const Text('This round will be removed from history.'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel')),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -64,127 +111,105 @@ class _RoundCard extends StatelessWidget {
         ),
       ).then((v) => v ?? false),
       onDismissed: (_) => context.read<RoundProvider>().deleteRound(round.id!),
-      child: GestureDetector(
-        onLongPress: () => _confirmDelete(context),
-        child: Card(
-          child: ExpansionTile(
-            tilePadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            title: Text(
-              round.course.name.toUpperCase(),
-              style: theme.textTheme.titleLarge,
-            ),
-            subtitle: Text(
-              dateStr,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: AppColors.textMuted),
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ...round.players.map((p) {
-                  final total = round.totalFor(p);
-                  final par = round.course.totalPar;
-                  final diff = total != null ? total - par : null;
-                  final winnerTotal = round.players
-                      .map((pl) => round.totalFor(pl))
-                      .whereType<int>()
-                      .fold<int?>(null,
-                          (best, t) => best == null || t < best ? t : best);
-                  final isWinner = total != null && total == winnerTotal;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          isWinner
-                              ? p.name.split(' ').first.toUpperCase()
-                              : p.name.split(' ').first,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: isWinner
-                                ? const Color(0xFF4CAF50)
-                                : AppColors.textMuted,
-                            fontSize: 11,
-                            fontWeight:
-                                isWinner ? FontWeight.w800 : FontWeight.normal,
-                          ),
-                        ),
-                        Text(
-                          total?.toString() ?? '-',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: AppColors.green,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        if (diff != null)
-                          Text(
-                            diff == 0 ? 'E' : (diff > 0 ? '+$diff' : '$diff'),
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: diff < 0
-                                  ? AppColors.birdie
-                                  : diff == 0
-                                      ? AppColors.par
-                                      : AppColors.bogey,
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                }),
-              ],
-            ),
-            children: [_ScorecardTable(round: round)],
-          ),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+        title: Text(
+          _formatDate(round.date),
+          style: Theme.of(context).textTheme.bodyLarge,
         ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime d) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    return '${months[d.month - 1]} ${d.day}, ${d.year}';
-  }
-
-  void _confirmDelete(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Round?'),
-        content: const Text('This round will be removed from history.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              context.read<RoundProvider>().deleteRound(round.id!);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+        trailing: _ScoreSummary(round: round),
+        children: [_ScorecardTable(round: round)],
       ),
     );
   }
 }
 
+// ---------------------------------------------------------------------------
+// Reusable player-score chips shown in both levels of the accordion
+// ---------------------------------------------------------------------------
+class _ScoreSummary extends StatelessWidget {
+  final Round round;
+  const _ScoreSummary({required this.round});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final par = round.course.totalPar;
+    final winnerTotal = round.players
+        .map((p) => round.totalFor(p))
+        .whereType<int>()
+        .fold<int?>(null, (best, t) => best == null || t < best ? t : best);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: round.players.map((p) {
+        final total = round.totalFor(p);
+        final diff = total != null ? total - par : null;
+        final isWinner = total != null && total == winnerTotal;
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isWinner
+                    ? p.name.split(' ').first.toUpperCase()
+                    : p.name.split(' ').first,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color:
+                      isWinner ? const Color(0xFF4CAF50) : AppColors.textMuted,
+                  fontSize: 11,
+                  fontWeight: isWinner ? FontWeight.w800 : FontWeight.normal,
+                ),
+              ),
+              Text(
+                total?.toString() ?? '-',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: AppColors.green,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (diff != null)
+                Text(
+                  diff == 0 ? 'E' : (diff > 0 ? '+$diff' : '$diff'),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: diff < 0
+                        ? AppColors.birdie
+                        : diff == 0
+                            ? AppColors.par
+                            : AppColors.bogey,
+                  ),
+                ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+String _formatDate(DateTime d) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
+  ];
+  return '${months[d.month - 1]} ${d.day}, ${d.year}';
+}
+
+// ---------------------------------------------------------------------------
+// Scorecard table
 class _ScorecardTable extends StatelessWidget {
   final Round round;
   const _ScorecardTable({required this.round});

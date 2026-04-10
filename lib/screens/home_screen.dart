@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/course.dart';
 import '../providers/round_provider.dart';
 import 'courses/courses_screen.dart';
 import 'players/players_screen.dart';
@@ -15,20 +16,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  Course? _pendingCourse;
 
-  static const _tabs = [
-    _CoursesTab(),
-    _PlayersTab(),
-    _RoundTab(),
-    _HistoryTab(),
-  ];
+  void _startRoundWithCourse(Course course) {
+    setState(() {
+      _pendingCourse = course;
+      _currentIndex = 2;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final activeRound = context.watch<RoundProvider>().activeRound;
 
+    final tabs = [
+      CoursesScreen(onStartRound: _startRoundWithCourse),
+      const PlayersScreen(),
+      RoundScreen(initialCourse: _pendingCourse),
+      const HistoryScreen(),
+    ];
+
     return Scaffold(
-      body: _tabs[_currentIndex],
+      body: tabs[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) => setState(() => _currentIndex = i),
@@ -56,28 +65,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
-
-class _CoursesTab extends StatelessWidget {
-  const _CoursesTab();
-  @override
-  Widget build(BuildContext context) => const CoursesScreen();
-}
-
-class _PlayersTab extends StatelessWidget {
-  const _PlayersTab();
-  @override
-  Widget build(BuildContext context) => const PlayersScreen();
-}
-
-class _RoundTab extends StatelessWidget {
-  const _RoundTab();
-  @override
-  Widget build(BuildContext context) => const RoundScreen();
-}
-
-class _HistoryTab extends StatelessWidget {
-  const _HistoryTab();
-  @override
-  Widget build(BuildContext context) => const HistoryScreen();
 }

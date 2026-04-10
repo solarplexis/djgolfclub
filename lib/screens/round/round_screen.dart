@@ -8,7 +8,8 @@ import '../../theme/app_theme.dart';
 import 'scorecard_screen.dart';
 
 class RoundScreen extends StatelessWidget {
-  const RoundScreen({super.key});
+  final Course? initialCourse;
+  const RoundScreen({super.key, this.initialCourse});
 
   @override
   Widget build(BuildContext context) {
@@ -17,12 +18,13 @@ class RoundScreen extends StatelessWidget {
     if (activeRound != null) {
       return const ScorecardScreen();
     }
-    return const _StartRoundScreen();
+    return _StartRoundScreen(initialCourse: initialCourse);
   }
 }
 
 class _StartRoundScreen extends StatefulWidget {
-  const _StartRoundScreen();
+  final Course? initialCourse;
+  const _StartRoundScreen({this.initialCourse});
 
   @override
   State<_StartRoundScreen> createState() => _StartRoundScreenState();
@@ -34,8 +36,9 @@ class _StartRoundScreenState extends State<_StartRoundScreen> {
   bool _starting = false;
 
   @override
-  void dispose() {
-    super.dispose();
+  void initState() {
+    super.initState();
+    _selectedCourse = widget.initialCourse;
   }
 
   Future<void> _startRound() async {
