@@ -19,7 +19,12 @@ class DatabaseHelper {
   Future<Database> _initDb() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'djgolfcard.db');
-    return openDatabase(path, version: 1, onCreate: _onCreate);
+    return openDatabase(
+      path,
+      version: 2,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -43,9 +48,19 @@ class DatabaseHelper {
         date TEXT NOT NULL,
         player_ids_json TEXT NOT NULL,
         scores_json TEXT NOT NULL,
+        finished INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (course_id) REFERENCES courses(id)
       )
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Rounds created before this column existed already completed
+      // normally, so treat them as finished rather than resumable.
+      await db.execute(
+          'ALTER TABLE rounds ADD COLUMN finished INTEGER NOT NULL DEFAULT 1');
+    }
   }
 
   // -- Courses --
@@ -118,7 +133,18 @@ class DatabaseHelper {
       'date': round.date.toIso8601String(),
       'player_ids_json': jsonEncode(playerIds),
       'scores_json': jsonEncode(scoresMap),
+      'finished': 0,
     });
+  }
+
+  Future<void> markRoundFinished(int id) async {
+    final db = await database;
+    await db.update(
+      'rounds',
+      {'finished': 1},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<void> updateRoundScores(Round round) async {
@@ -136,44 +162,77 @@ class DatabaseHelper {
   }
 
   Future<List<Round>> getRounds(
-      List<Course> courses, List<Player> players) async {
+      List<Course> courses, List<Player> players,
+      {bool? finished}) async {
     final db = await database;
-    final rows = await db.query('rounds', orderBy: 'date DESC');
+    final rows = await db.query(
+      'rounds',
+      where: finished == null ? null : 'finished = ?',
+      whereArgs: finished == null ? null : [finished ? 1 : 0],
+      orderBy: 'date DESC',
+    );
     final courseMap = {for (final c in courses) c.id!: c};
     final playerMap = {for (final p in players) p.id!: p};
 
-    return rows.map((row) {
-      final course = courseMap[row['course_id'] as int]!;
-      final playerIds = (jsonDecode(row['player_ids_json'] as String) as List)
-          .map((id) => id as int)
-          .toList();
-      final roundPlayers = playerIds.map((id) => playerMap[id]!).toList();
+    return rows
+        .where((row) => courseMap.containsKey(row['course_id'] as int))
+        .map((row) => _roundFromRow(row, courseMap, playerMap))
+        .toList();
+  }
 
-      final rawScores =
-          jsonDecode(row['scores_json'] as String) as Map<String, dynamic>;
-      final scoresMap = <int, HoleScore>{};
-      for (final hole in course.holes) {
-        final holeKey = hole.number.toString();
-        final strokeMap = rawScores[holeKey] as Map<String, dynamic>? ?? {};
-        final strokes = <int, int?>{
-          for (final p in roundPlayers)
-            p.id!: strokeMap[p.id.toString()] as int?,
-        };
-        scoresMap[hole.number] = HoleScore(
-          holeNumber: hole.number,
-          par: hole.par,
-          strokes: strokes,
-        );
-      }
+  /// Returns the most recent unfinished round, if any — used to resume a
+  /// round after the app was killed or crashed mid-round, since scores are
+  /// already persisted incrementally via [updateRoundScores].
+  Future<Round?> getActiveRound(
+      List<Course> courses, List<Player> players) async {
+    final db = await database;
+    final rows = await db.query(
+      'rounds',
+      where: 'finished = ?',
+      whereArgs: [0],
+      orderBy: 'date DESC',
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    final courseMap = {for (final c in courses) c.id!: c};
+    final playerMap = {for (final p in players) p.id!: p};
+    final row = rows.first;
+    if (!courseMap.containsKey(row['course_id'] as int)) return null;
+    return _roundFromRow(row, courseMap, playerMap);
+  }
 
-      return Round(
-        id: row['id'] as int,
-        course: course,
-        players: roundPlayers,
-        date: DateTime.parse(row['date'] as String),
-        scores: scoresMap,
+  Round _roundFromRow(Map<String, Object?> row, Map<int, Course> courseMap,
+      Map<int, Player> playerMap) {
+    final course = courseMap[row['course_id'] as int]!;
+    final playerIds = (jsonDecode(row['player_ids_json'] as String) as List)
+        .map((id) => id as int)
+        .toList();
+    final roundPlayers = playerIds.map((id) => playerMap[id]!).toList();
+
+    final rawScores =
+        jsonDecode(row['scores_json'] as String) as Map<String, dynamic>;
+    final scoresMap = <int, HoleScore>{};
+    for (final hole in course.holes) {
+      final holeKey = hole.number.toString();
+      final strokeMap = rawScores[holeKey] as Map<String, dynamic>? ?? {};
+      final strokes = <int, int?>{
+        for (final p in roundPlayers)
+          p.id!: strokeMap[p.id.toString()] as int?,
+      };
+      scoresMap[hole.number] = HoleScore(
+        holeNumber: hole.number,
+        par: hole.par,
+        strokes: strokes,
       );
-    }).toList();
+    }
+
+    return Round(
+      id: row['id'] as int,
+      course: course,
+      players: roundPlayers,
+      date: DateTime.parse(row['date'] as String),
+      scores: scoresMap,
+    );
   }
 
   Future<void> deleteRound(int id) async {

@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   Course? _pendingCourse;
+  bool _resumedActiveRound = false;
 
   void _startRoundWithCourse(Course course) {
     setState(() {
@@ -28,6 +29,15 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final activeRound = context.watch<RoundProvider>().activeRound;
+
+    // A round found on launch means the app was closed or crashed mid-round;
+    // scores up to that point are already saved, so jump straight to it.
+    if (!_resumedActiveRound && activeRound != null) {
+      _resumedActiveRound = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _currentIndex = 2);
+      });
+    }
 
     final tabs = [
       CoursesScreen(onStartRound: _startRoundWithCourse),

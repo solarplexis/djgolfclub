@@ -45,6 +45,22 @@ class Round {
     return total;
   }
 
+  /// Sum of strokes entered so far for [player] across [holeNumbers].
+  /// Unlike [totalFor], this doesn't require every hole to be complete —
+  /// used to show running Front 9 / Back 9 subtotals mid-round.
+  int? partialTotalFor(Player player, Iterable<int> holeNumbers) {
+    int total = 0;
+    bool any = false;
+    for (final holeNumber in holeNumbers) {
+      final s = scores[holeNumber]?.strokes[player.id];
+      if (s != null) {
+        total += s;
+        any = true;
+      }
+    }
+    return any ? total : null;
+  }
+
   bool get isComplete => scores.values.every(
         (hs) => hs.strokes.values.every((s) => s != null),
       );

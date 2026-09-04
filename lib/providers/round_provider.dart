@@ -14,7 +14,12 @@ class RoundProvider extends ChangeNotifier {
   Future<void> load() async {
     final courses = await DatabaseHelper.instance.getCourses();
     final players = await DatabaseHelper.instance.getPlayers();
-    _history = await DatabaseHelper.instance.getRounds(courses, players);
+    _history = await DatabaseHelper.instance
+        .getRounds(courses, players, finished: true);
+    // Scores are saved to the database after every hole, so if the app was
+    // killed or crashed mid-round, resume it instead of losing progress.
+    _activeRound =
+        await DatabaseHelper.instance.getActiveRound(courses, players);
     notifyListeners();
   }
 
@@ -61,6 +66,7 @@ class RoundProvider extends ChangeNotifier {
 
   Future<void> finishRound([dynamic courses, dynamic players]) async {
     if (_activeRound == null) return;
+    await DatabaseHelper.instance.markRoundFinished(_activeRound!.id!);
     _history.insert(0, _activeRound!);
     _activeRound = null;
     notifyListeners();

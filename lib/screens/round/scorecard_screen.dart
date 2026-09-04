@@ -86,6 +86,14 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
             ),
           ),
 
+          // Front 9 / Back 9 quick nav
+          if (round.course.holeCount > 9)
+            _NineToggle(
+              currentHole: _currentHole,
+              onSelectFront: () => setState(() => _currentHole = 1),
+              onSelectBack: () => setState(() => _currentHole = 10),
+            ),
+
           // Player score inputs
           Expanded(
             child: ListView(
@@ -254,6 +262,13 @@ class _Totals extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final showNines = round.course.holeCount > 9;
+    final frontHoles = round.course.holes
+        .where((h) => h.number <= 9)
+        .map((h) => h.number);
+    final backHoles =
+        round.course.holes.where((h) => h.number > 9).map((h) => h.number);
+
     return Container(
       color: AppColors.green,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -268,6 +283,19 @@ class _Totals extends StatelessWidget {
               Text(p.name,
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: AppColors.white.withAlpha(200))),
+              if (showNines)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Text(
+                    'OUT ${round.partialTotalFor(p, frontHoles)?.toString() ?? '-'}'
+                    '  ·  '
+                    'IN ${round.partialTotalFor(p, backHoles)?.toString() ?? '-'}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.white.withAlpha(160),
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
               Text(
                 total?.toString() ?? '-',
                 style: theme.textTheme.headlineMedium?.copyWith(
@@ -295,6 +323,83 @@ class _Totals extends StatelessWidget {
   }
 }
 
+class _NineToggle extends StatelessWidget {
+  final int currentHole;
+  final VoidCallback onSelectFront;
+  final VoidCallback onSelectBack;
+
+  const _NineToggle({
+    required this.currentHole,
+    required this.onSelectFront,
+    required this.onSelectBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isFront = currentHole <= 9;
+    return Container(
+      color: AppColors.greenLight,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: _NineButton(
+              label: 'FRONT 9',
+              selected: isFront,
+              onTap: onSelectFront,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _NineButton(
+              label: 'BACK 9',
+              selected: !isFront,
+              onTap: onSelectBack,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NineButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _NineButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.gold : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? AppColors.green : AppColors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
+            letterSpacing: 1.0,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HoleDots extends StatelessWidget {
   final int holeCount;
   final int current;
@@ -316,50 +421,86 @@ class _HoleDots extends StatelessWidget {
     return hs.strokes.values.every((s) => s != null);
   }
 
+  Widget _dot(int hole) {
+    final isActive = hole == current;
+    final isDone = _holeComplete(hole);
+    return GestureDetector(
+      onTap: () => onTap(hole),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        width: isActive ? 20 : 14,
+        height: isActive ? 20 : 14,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isActive
+              ? AppColors.gold
+              : isDone
+                  ? AppColors.green
+                  : AppColors.divider,
+          border:
+              isActive ? Border.all(color: AppColors.green, width: 2) : null,
+        ),
+        child: isActive
+            ? Center(
+                child: Text(
+                  '$hole',
+                  style: const TextStyle(
+                    color: AppColors.green,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget _nineLabel(String text) => Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.0,
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
+    final showNines = holeCount > 9;
     return Container(
       color: AppColors.cream,
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(holeCount, (i) {
-          final hole = i + 1;
-          final isActive = hole == current;
-          final isDone = _holeComplete(hole);
-          return GestureDetector(
-            onTap: () => onTap(hole),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              width: isActive ? 20 : 14,
-              height: isActive ? 20 : 14,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isActive
-                    ? AppColors.gold
-                    : isDone
-                        ? AppColors.green
-                        : AppColors.divider,
-                border: isActive
-                    ? Border.all(color: AppColors.green, width: 2)
-                    : null,
-              ),
-              child: isActive
-                  ? Center(
-                      child: Text(
-                        '$hole',
-                        style: const TextStyle(
-                          color: AppColors.green,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    )
-                  : null,
+      child: showNines
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _nineLabel('OUT'),
+                    ...List.generate(9, (i) => _dot(i + 1)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _nineLabel('IN '),
+                    ...List.generate(
+                        holeCount - 9, (i) => _dot(i + 10)),
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(holeCount, (i) => _dot(i + 1)),
             ),
-          );
-        }),
-      ),
     );
   }
 }
