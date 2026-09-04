@@ -2,17 +2,17 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Pixel 6 (Debug)",
+      "name": "Pixel 10 (Debug)",
       "request": "launch",
       "type": "dart",
-      "deviceId": "19111FDF600CSF",
+      "deviceId": "63070DLCR001FD",
       "flutterMode": "debug"
     },
     {
-      "name": "Pixel 6 (Release)",
+      "name": "Pixel 10 (Release)",
       "request": "launch",
       "type": "dart",
-      "deviceId": "19111FDF600CSF",
+      "deviceId": "63070DLCR001FD",
       "flutterMode": "release"
     },
     {
