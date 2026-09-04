@@ -35,19 +35,14 @@ class Round {
                 )
             };
 
-  int? totalFor(Player player) {
-    int total = 0;
-    for (final hs in scores.values) {
-      final s = hs.strokes[player.id];
-      if (s == null) return null;
-      total += s;
-    }
-    return total;
-  }
+  /// Sum of strokes entered so far for [player]. Reflects whatever holes
+  /// have actually been played rather than requiring the whole course —
+  /// a player who only plays the front 9 still gets a total for those
+  /// 9 holes.
+  int? totalFor(Player player) => partialTotalFor(player, scores.keys);
 
   /// Sum of strokes entered so far for [player] across [holeNumbers].
-  /// Unlike [totalFor], this doesn't require every hole to be complete —
-  /// used to show running Front 9 / Back 9 subtotals mid-round.
+  /// Used to show running Front 9 / Back 9 subtotals mid-round.
   int? partialTotalFor(Player player, Iterable<int> holeNumbers) {
     int total = 0;
     bool any = false;
@@ -61,7 +56,29 @@ class Round {
     return any ? total : null;
   }
 
+  /// Sum of par for the holes [player] has actually recorded strokes for.
+  /// Used instead of [course.totalPar] so a partial round (e.g. front 9
+  /// only) shows an accurate over/under par instead of comparing against
+  /// the full course's par.
+  int parThroughFor(Player player) {
+    int total = 0;
+    for (final hole in course.holes) {
+      if (scores[hole.number]?.strokes[player.id] != null) {
+        total += hole.par;
+      }
+    }
+    return total;
+  }
+
+  /// True once every hole in the course has a score for every player.
   bool get isComplete => scores.values.every(
+        (hs) => hs.strokes.values.every((s) => s != null),
+      );
+
+  /// True once at least one hole has been fully scored for every player —
+  /// enough to let the round be finished early (e.g. after just the
+  /// front 9) instead of requiring the whole course.
+  bool get anyHoleComplete => scores.values.any(
         (hs) => hs.strokes.values.every((s) => s != null),
       );
 }

@@ -134,7 +134,6 @@ class _ScoreSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final par = round.course.totalPar;
     final winnerTotal = round.players
         .map((p) => round.totalFor(p))
         .whereType<int>()
@@ -144,7 +143,7 @@ class _ScoreSummary extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: round.players.map((p) {
         final total = round.totalFor(p);
-        final diff = total != null ? total - par : null;
+        final diff = total != null ? total - round.parThroughFor(p) : null;
         final isWinner = total != null && total == winnerTotal;
         return Padding(
           padding: const EdgeInsets.only(right: 8),
@@ -253,7 +252,7 @@ class _ScorecardTable extends StatelessWidget {
                     final s = round.scores[h.number]?.strokes[p.id];
                     return _scoreCell(s, h.par, theme);
                   }),
-                  _totalCell(round.totalFor(p), round.course.totalPar, theme),
+                  _totalCell(round.totalFor(p), round.parThroughFor(p), theme),
                 ],
               )),
         ],

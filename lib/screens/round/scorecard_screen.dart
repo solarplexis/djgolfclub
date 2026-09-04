@@ -32,7 +32,7 @@ class _ScorecardScreenState extends State<ScorecardScreen> {
           onPressed: () => _confirmAbandon(context),
         ),
         actions: [
-          if (round.isComplete)
+          if (round.anyHoleComplete)
             TextButton(
               onPressed: () => _finishRound(context),
               child: const Text('FINISH',
@@ -276,8 +276,7 @@ class _Totals extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: round.players.map((p) {
           final total = round.totalFor(p);
-          final par = round.course.totalPar;
-          final diff = total != null ? total - par : null;
+          final diff = total != null ? total - round.parThroughFor(p) : null;
           return Column(
             children: [
               Text(p.name,

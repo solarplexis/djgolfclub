@@ -67,8 +67,14 @@ class _CourseStatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totals =
-        rounds.map((r) => r.totalFor(player)).whereType<int>().toList();
+    // Only full (18-hole, or whatever the course is) rounds count toward
+    // best/avg/worst — a front-9-only round compared against full-course
+    // par would look like an implausibly great score.
+    final totals = rounds
+        .where((r) => r.isComplete)
+        .map((r) => r.totalFor(player))
+        .whereType<int>()
+        .toList();
 
     final par = rounds.first.course.totalPar;
     final roundsPlayed = rounds.length;
